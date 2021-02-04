@@ -1,3 +1,10 @@
+resource_types:
+- name: pivnet
+  type: docker-image
+  source:
+    repository: pivotalcf/pivnet-resource
+    tag: latest-final
+
 resources:
 - name: platform-automation-tasks
   type: s3
@@ -81,7 +88,15 @@ resources:
   type: time
   source:
     interval: 24h
-  
+
+- name: platform-automation-pivnet
+  type: pivnet
+  source:
+    api_token: "((pivnet-token))"
+    product_slug: platform-automation
+    product_version: 5\.(.*)
+    sort_by: semver
+
 jobs:
 - name: fetch-opsman
   plan:
@@ -173,3 +188,15 @@ jobs:
     - put: ncp-product
       params:
         file: downloaded-product/*
+
+- name: fetch-platform-automation
+  plan:
+  - get: platform-automation-pivnet
+    trigger: true
+  - in_parallel:
+    - put: platform-automation-tasks
+      params:
+        file: platform-automation-pivnet/platform-automation-tasks*.zip
+    - put: platform-automation-image
+      params:
+        file: platform-automation-pivnet/vsphere-platform-automation-image*.tar.gz
