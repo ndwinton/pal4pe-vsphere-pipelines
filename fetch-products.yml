@@ -124,16 +124,16 @@ jobs:
         files: configuration
       output_mapping:
         interpolated-files: interpolated-configs
-    - task: download-opsman-product
-      image: platform-automation-image
-      file: platform-automation-tasks/tasks/download-product.yml
-      params:
-        CONFIG_FILE: download-product/opsman.yml
-      input_mapping:
-        config: interpolated-configs
-    - put: opsman-product
-      params:
-        file: downloaded-product/*
+  - task: download-opsman-product
+    image: platform-automation-image
+    file: platform-automation-tasks/tasks/download-product.yml
+    params:
+      CONFIG_FILE: download-product/opsman.yml
+    input_mapping:
+      config: interpolated-configs
+  - put: opsman-product
+    params:
+      file: downloaded-product/*
 
 - name: fetch-healthwatch
   plan:
