@@ -84,31 +84,32 @@ jobs:
     - get: configuration
     - get: daily
       trigger: true
-  - task: interpolate-env-creds
-    image: platform-automation-image
-    file: platform-automation-tasks/tasks/credhub-interpolate.yml
-    params:
-      CREDHUB_CLIENT: ((credhub-client))
-      CREDHUB_SECRET: ((credhub-secret))
-      CREDHUB_SERVER: ((credhub-server))
-      CREDHUB_CA_CERT: ((credhub-ca-cert.certificate))
-      PREFIX: '/concourse/main'
-      INTERPOLATION_PATHS: download-product
-      SKIP_MISSING: false
-    input_mapping:
-      files: configuration
-    output_mapping:
-      interpolated-files: interpolated-configs
-  - task: download-opsman-product
-    image: platform-automation-image
-    file: platform-automation-tasks/tasks/download-product.yml
-    params:
-      CONFIG_FILE: download-product/opsman.yml
-    input_mapping:
-      config: interpolated-configs
-  - put: opsman-product
-    params:
-      file: downloaded-product/*
+  - do: &interpolate-env-creds
+    - task: interpolate-env-creds
+      image: platform-automation-image
+      file: platform-automation-tasks/tasks/credhub-interpolate.yml
+      params:
+        CREDHUB_CLIENT: ((credhub-client))
+        CREDHUB_SECRET: ((credhub-secret))
+        CREDHUB_SERVER: ((credhub-server))
+        CREDHUB_CA_CERT: ((credhub-ca-cert.certificate))
+        PREFIX: '/concourse/main'
+        INTERPOLATION_PATHS: download-product
+        SKIP_MISSING: false
+      input_mapping:
+        files: configuration
+      output_mapping:
+        interpolated-files: interpolated-configs
+    - task: download-opsman-product
+      image: platform-automation-image
+      file: platform-automation-tasks/tasks/download-product.yml
+      params:
+        CONFIG_FILE: download-product/opsman.yml
+      input_mapping:
+        config: interpolated-configs
+    - put: opsman-product
+      params:
+        file: downloaded-product/*
 
 - name: fetch-healthwatch
   plan:
@@ -120,21 +121,7 @@ jobs:
     - get: configuration
     - get: daily
       trigger: true
-  - task: interpolate-env-creds
-    image: platform-automation-image
-    file: platform-automation-tasks/tasks/credhub-interpolate.yml
-    params:
-      CREDHUB_CLIENT: ((credhub-client))
-      CREDHUB_SECRET: ((credhub-secret))
-      CREDHUB_SERVER: ((credhub-server))
-      CREDHUB_CA_CERT: ((credhub-ca-cert.certificate))
-      PREFIX: '/concourse/main'
-      INTERPOLATION_PATHS: download-product
-      SKIP_MISSING: false
-    input_mapping:
-      files: configuration
-    output_mapping:
-      interpolated-files: interpolated-configs
+  - do: *interpolate-env-creds
   - task: download-healthwatch-product
     image: platform-automation-image
     file: platform-automation-tasks/tasks/download-product.yml
@@ -160,21 +147,7 @@ jobs:
     - get: configuration
     - get: daily
       trigger: true
-  - task: interpolate-env-creds
-    image: platform-automation-image
-    file: platform-automation-tasks/tasks/credhub-interpolate.yml
-    params:
-      CREDHUB_CLIENT: ((credhub-client))
-      CREDHUB_SECRET: ((credhub-secret))
-      CREDHUB_SERVER: ((credhub-server))
-      CREDHUB_CA_CERT: ((credhub-ca-cert.certificate))
-      PREFIX: '/concourse/main'
-      INTERPOLATION_PATHS: download-product
-      SKIP_MISSING: false
-    input_mapping:
-      files: configuration
-    output_mapping:
-      interpolated-files: interpolated-configs
+  - do: *interpolate-env-creds
   - task: download-tas-product
     image: platform-automation-image
     file: platform-automation-tasks/tasks/download-product.yml
