@@ -4,6 +4,8 @@ resource_types:
   source:
     repository: pivotalcf/pivnet-resource
     tag: latest-final
+    username: ((docker.username))
+    password: ((docker.password))
 
 resources:
 - name: platform-automation-tasks
