@@ -177,7 +177,7 @@ jobs:
   plan:
   - in_parallel: *get-prerequisites
   - do: *interpolate-env-creds
-  - task: download-tas-product
+  - task: download-ncp-product
     image: platform-automation-image
     file: platform-automation-tasks/tasks/download-product.yml
     params:
