@@ -27,16 +27,30 @@ resources:
     secret_access_key: ((s3.secret_key))
     regexp: state/state-(.*).yml
 
+- name: installation
+  type: s3
+  source:
+    endpoint: ((s3.address))
+    bucket: ((s3.bucket_name))
+    access_key_id: ((s3.access_key))
+    secret_access_key: ((s3.secret_key))
+    regexp: state/installation-(.*).yml
+
 - name: configuration
   type: git
   source:
     private_key: ((config-repo-key.private_key))
     uri: ((config-repo-uri))
 
+- name: daily
+  type: time
+  source:
+    interval: 24h
+
 jobs:
 - name: install-opsman
   plan:
-  - in_parallel:
+  - in_parallel: &get-prerequisites
     - get: platform-automation-tasks
       params: { unpack: true }
     - get: platform-automation-image
@@ -106,3 +120,22 @@ jobs:
       env: interpolated-configuration
     params:
       ENV_FILE: sandbox/env.yml
+  
+- name: export-installation
+  plan:
+  - in_parallel: *get-prerequisites
+  - do: &daily_trigger
+    - get: daily
+      trigger: true
+  - do: *interpolate-env-creds
+  - task: export-installation
+    image: platform-automation-image
+    file: platform-automation-tasks/tasks/export-installation.yml
+    input_mapping:
+      env: interpolated-configuration
+    params:
+      ENV_FILE: sandbox/env.yml
+      INSTALLATION_FILE: installation-$timestamp.zip
+  - put: installation
+    params: { file: installation/installation-*.yml }
+    
