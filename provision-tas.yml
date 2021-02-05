@@ -34,7 +34,7 @@ resources:
     bucket: ((s3.bucket_name))
     access_key_id: ((s3.access_key))
     secret_access_key: ((s3.secret_key))
-    regexp: state/installation-(.*).yml
+    regexp: state/installation-(.*).zip
 
 - name: configuration
   type: git
@@ -137,5 +137,5 @@ jobs:
       ENV_FILE: sandbox/env.yml
       INSTALLATION_FILE: installation-$timestamp.zip
   - put: installation
-    params: { file: installation/installation-*.yml }
+    params: { file: installation/installation-*.zip }
     
