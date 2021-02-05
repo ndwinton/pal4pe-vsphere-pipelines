@@ -50,7 +50,7 @@ resources:
 jobs:
 - name: install-opsman
   plan:
-  - in_parallel: &get-prerequisites
+  - in_parallel: &get-automation-config-and-state
     - get: platform-automation-tasks
       params: { unpack: true }
     - get: platform-automation-image
@@ -72,16 +72,17 @@ jobs:
         files: configuration
       output_mapping:
         interpolated-files: interpolated-configuration
-  - task: download-opsman-product
-    image: platform-automation-image
-    file: platform-automation-tasks/tasks/download-product.yml
-    params:
-      CONFIG_FILE: download-product/opsman.yml
-      SOURCE: s3
-    input_mapping:
-      config: interpolated-configuration
-    output_mapping:
-      downloaded-product: opsman-image
+  - do: &download-opsman-product
+    - task: download-opsman-product
+      image: platform-automation-image
+      file: platform-automation-tasks/tasks/download-product.yml
+      params:
+        CONFIG_FILE: download-product/opsman.yml
+        SOURCE: s3
+      input_mapping:
+        config: interpolated-configuration
+      output_mapping:
+        downloaded-product: opsman-image
   - task: create-vm
     image: platform-automation-image
     file: platform-automation-tasks/tasks/create-vm.yml
@@ -91,7 +92,7 @@ jobs:
     params:
       OPSMAN_CONFIG_FILE: sandbox/opsman.yml
       STATE_FILE: state-$timestamp.yml
-    ensure:
+    ensure: &save-state
       do:
       - put: state
         params: { file: generated-state/state-*.yml }
@@ -104,38 +105,65 @@ jobs:
     params:
       ENV_FILE: sandbox/env.yml
       AUTH_CONFIG_FILE: sandbox/auth.yml
-  - task: configure-director
-    image: platform-automation-image
-    file: platform-automation-tasks/tasks/configure-director.yml
-    input_mapping:
-      env: interpolated-configuration
-      config: interpolated-configuration
-    params:
-      ENV_FILE: sandbox/env.yml
-      DIRECTOR_CONFIG_FILE: sandbox/director.yml
-  - task: apply-changes
-    image: platform-automation-image
-    file: platform-automation-tasks/tasks/apply-director-changes.yml
-    input_mapping:
-      env: interpolated-configuration
-    params:
-      ENV_FILE: sandbox/env.yml
+  - do: &configure-director
+    - task: configure-director
+      image: platform-automation-image
+      file: platform-automation-tasks/tasks/configure-director.yml
+      input_mapping:
+        env: interpolated-configuration
+        config: interpolated-configuration
+      params:
+        ENV_FILE: sandbox/env.yml
+        DIRECTOR_CONFIG_FILE: sandbox/director.yml
+  - do: &apply-director-changes
+    - task: apply-director-changes
+      image: platform-automation-image
+      file: platform-automation-tasks/tasks/apply-director-changes.yml
+      input_mapping:
+        env: interpolated-configuration
+      params:
+        ENV_FILE: sandbox/env.yml
   
 - name: export-installation
   plan:
-  - in_parallel: *get-prerequisites
+  - in_parallel: *get-automation-config-and-state
   - do: &daily_trigger
     - get: daily
       trigger: true
   - do: *interpolate-env-creds
-  - task: export-installation
+  - do: &export-installation
+    - task: export-installation
+      image: platform-automation-image
+      file: platform-automation-tasks/tasks/export-installation.yml
+      input_mapping:
+        env: interpolated-configuration
+      params:
+        ENV_FILE: sandbox/env.yml
+        INSTALLATION_FILE: installation-$timestamp.zip
+    - put: installation
+      params: { file: installation/installation-*.zip }
+
+- name: upgrade-opsman
+  plan:
+  - in_parallel: *get-automation-config-and-state
+  - get: installation
+    passed: [ export-installation ]
+  - do: *interpolate-env-creds
+  - do: *download-opsman-product
+  - task: upgrade-opsman
     image: platform-automation-image
-    file: platform-automation-tasks/tasks/export-installation.yml
+    file: platform-automation-tasks/tasks/upgrade-opsman.yml
     input_mapping:
       env: interpolated-configuration
+      config: interpolated-configuration
+      image: opsman-image
+      installation: installation
+      state: state
     params:
       ENV_FILE: sandbox/env.yml
-      INSTALLATION_FILE: installation-$timestamp.zip
-  - put: installation
-    params: { file: installation/installation-*.zip }
-    
+      OPSMAN_CONFIG_FILE: sandbox/opsman.yml
+      STATE_FILE: state-$timestamp.yml
+    ensure: *save-state
+  - do: *configure-director
+  - do: *apply-director-changes
+  - do: *export-installation
