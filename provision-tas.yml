@@ -167,3 +167,63 @@ jobs:
   - do: *configure-director
   - do: *apply-director-changes
   - do: *export-installation
+
+- name: upload-and-stage-tas
+  plan:
+  - do: &get-automation-and-config
+    - in_parallel:
+      - get: platform-automation-tasks
+        params: { unpack: true }
+      - get: platform-automation-image
+        params: { unpack: true }
+      - get: configuration
+  - do: *interpolate-env-creds
+  - task: download-srt-product
+    image: platform-automation-image
+    file: platform-automation-tasks/tasks/download-product.yml
+    params:
+      CONFIG_FILE: download-product/tas.yml
+      SOURCE: s3
+    input_mapping:
+      config: interpolated-configuration
+    output_mapping:
+      downloaded-product: srt-tile
+  - task: upload-and-stage-tas
+    image: platform-automation-image
+    file: platform-automation-tasks/tasks/upload-and-stage-product.yml
+    input_mapping:
+      product: srt-tile
+      env: interpolated-configuration
+    params:
+      ENV_FILE: sandbox/env.yml
+  - task: upload-stemcell
+    image: platform-automation-image
+    file: platform-automation-tasks/tasks/upload-stemcell.yml
+    input_mapping:
+      stemcell: downloaded-stemcell
+      env: interpolated-configuration
+    params:
+      ENV_FILE: sandbox/env.yml
+
+- name: upload-and-stage-ncp
+  plan:
+  - do: *get-automation-and-config
+  - do: *interpolate-env-creds
+  - task: download-ncp-product
+    image: platform-automation-image
+    file: platform-automation-tasks/tasks/download-product.yml
+    params:
+      CONFIG_FILE: download-product/ncp.yml
+      SOURCE: s3
+    input_mapping:
+      config: interpolated-configuration
+    output_mapping:
+      downloaded-product: ncp-tile
+  - task: upload-and-stage-ncp
+    image: platform-automation-image
+    file: platform-automation-tasks/tasks/upload-and-stage-product.yml
+    input_mapping:
+      product: ncp-tile
+      env: interpolated-configuration
+    params:
+      ENV_FILE: sandbox/env.yml
