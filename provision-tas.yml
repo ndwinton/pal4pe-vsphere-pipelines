@@ -227,3 +227,17 @@ jobs:
       env: interpolated-configuration
     params:
       ENV_FILE: sandbox/env.yml
+
+- name: configure-tas
+  plan:
+  - do: *get-automation-and-config
+  - do: *interpolate-env-creds
+  - task: configure-tas
+    image: platform-automation-image
+    file: platform-automation-tasks/tasks/configure-product.yml
+    input_mapping:
+      config: interpolated-configuration
+      env: interpolated-configuration
+    params:
+      CONFIG_FILE: sandbox/tas.yml
+      ENV_FILE: sandbox/env.yml
