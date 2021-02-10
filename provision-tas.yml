@@ -247,7 +247,7 @@ jobs:
   plan:
   - do: *get-automation-and-config
   - do: *interpolate-env-creds
-  - task: configure-tas
+  - task: configure-ncp
     image: platform-automation-image
     file: platform-automation-tasks/tasks/configure-product.yml
     input_mapping:
@@ -255,4 +255,16 @@ jobs:
       env: interpolated-configuration
     params:
       CONFIG_FILE: sandbox/ncp.yml
+      ENV_FILE: sandbox/env.yml
+
+- name: apply-changes
+  plan:
+  - do: *get-automation-and-config
+  - do: *interpolate-env-creds
+  - task: apply-changes
+    image: platform-automation-image
+    file: platform-automation-tasks/tasks/apply-changes.yml
+    input_mapping:
+      env: interpolated-configuration
+    params:
       ENV_FILE: sandbox/env.yml
