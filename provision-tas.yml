@@ -47,6 +47,26 @@ resources:
   source:
     interval: 24h
 
+- name: tas-product
+  type: s3
+  source:
+    endpoint: ((s3.address))
+    bucket: ((s3.bucket_name))
+    access_key_id: ((s3.access_key))
+    secret_access_key: ((s3.secret_key))
+    regexp: tas/\[elastic-runtime,(.*)\]srt-.*
+    skip_download: true
+
+- name: ncp-product
+  type: s3
+  source:
+    endpoint: ((s3.address))
+    bucket: ((s3.bucket_name))
+    access_key_id: ((s3.access_key))
+    secret_access_key: ((s3.secret_key))
+    regexp: ncp/\[vmware-nsx-t,(.*)\]VMware-NSX-T-.*
+    skip_download: true
+
 jobs:
 - name: install-opsman
   plan:
@@ -170,6 +190,8 @@ jobs:
 
 - name: upload-and-stage-tas
   plan:
+  - get: tas-product
+    trigger: true
   - do: &get-automation-and-config
     - in_parallel:
       - get: platform-automation-tasks
@@ -207,6 +229,8 @@ jobs:
 
 - name: upload-and-stage-ncp
   plan:
+  - get: ncp-product
+    trigger: true
   - do: *get-automation-and-config
   - do: *interpolate-env-creds
   - task: download-ncp-product
@@ -230,6 +254,10 @@ jobs:
 
 - name: configure-tas
   plan:
+  - get: tas-product
+    passed:
+    - upload-and-stage-tas
+    trigger: true
   - do: *get-automation-and-config
   - do: *interpolate-env-creds
   - task: configure-tas
@@ -245,6 +273,10 @@ jobs:
 
 - name: configure-ncp
   plan:
+  - get: ncp-product
+    passed:
+    - upload-and-stage-ncp
+    trigger: true
   - do: *get-automation-and-config
   - do: *interpolate-env-creds
   - task: configure-ncp
@@ -259,6 +291,14 @@ jobs:
 
 - name: apply-changes
   plan:
+  - get: tas-product
+    passed:
+    - configure-tas
+    trigger: true
+  - get: ncp-product
+    passed:
+    - configure-ncp
+    trigger: true
   - do: *get-automation-and-config
   - do: *interpolate-env-creds
   - task: apply-changes
